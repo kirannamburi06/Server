@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: xss-logger
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: python xss-server.py
+    envVars:
+      - key: PORT
+        value: 10000
