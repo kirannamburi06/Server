@@ -1,25 +1,26 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import urllib.parse
+from flask import Flask, request
+import datetime
 
-class XSSLogger(BaseHTTPRequestHandler):
-    def do_GET(self):
-        print(f"[+] Request: {self.path}")
-        parsed = urllib.parse.urlparse(self.path)
-        params = urllib.parse.parse_qs(parsed.query)
-        for key, value in params.items():
-            print(f"    {key}: {value}")
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
+app = Flask(__name__)
 
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode('utf-8')
-        print("[+] POST data:", post_data)
-        self.send_response(200)
-        self.end_headers()
+@app.route("/", defaults={"path": ""}, methods=["GET", "POST"])
+@app.route("/<path:path>", methods=["GET", "POST"])
+def catch_all(path):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_data = {
+        "time": now,
+        "ip": request.remote_addr,
+        "method": request.method,
+        "path": path,
+        "query": request.args.to_dict(),
+        "headers": dict(request.headers),
+        "body": request.get_data(as_text=True)
+    }
+    print("\n[HIT] ----------------")
+    print(log_data)
+    with open("hits.log", "a") as f:
+        f.write(str(log_data) + "\n")
+    return "OK"
 
-if __name__ == '__main__':
-    server = HTTPServer(('0.0.0.0', 10000), XSSLogger)  # Port Render will assign
-    print("Listening on port 10000...")
-    server.serve_forever()
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=80)
